@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>فروشگاه من</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;800&display=swap">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script>
+tailwind.config={theme:{extend:{fontFamily:{sans:['Vazirmatn','Tahoma','sans-serif']},colors:{
+ink:'#04222B',deep:'#0A3D4A',teal1:'#10606F',teal2:'#1D8B94',teal3:'#4FB8B4',mint:'#98D8D0',mist:'#E2F4F0'}}}}
+</script>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{background:#F3FAF8;color:#04222B}
+.hero{background:linear-gradient(180deg,#04222B 0%,#0A3D4A 50%,#10606F 100%);min-height:100vh}
+.tbl th{font-weight:500;color:#10606F;background:#E2F4F0;padding:.75rem 1rem;text-align:right;white-space:nowrap}
+.tbl td{padding:.8rem 1rem;border-top:1px solid #E2F4F0;white-space:nowrap}
+.nav-on{background:#1D8B94;color:#fff}
+.dot b{display:none}
+input:checked+span .dot b{display:block}
+input:checked+span{border-color:#1D8B94;background:#E2F4F0}
+input:focus-visible+span,button:focus-visible,a:focus-visible{outline:2px solid #4FB8B4;outline-offset:2px}
+.field{width:100%;border-radius:9999px;border:1px solid #98D8D0;background:#fff;padding:.7rem 1.1rem;color:#04222B}
+</style>
+</head>
+<body class="font-sans">
+<div id="app"></div>
+<template id="storeTpl">
+<div class="flex min-h-screen">
+  <aside id="side" class="fixed inset-y-0 right-0 z-30 w-64 bg-ink text-mist translate-x-full lg:translate-x-0 lg:static transition-transform duration-200 flex flex-col">
+    <div class="px-6 py-6">
+      <div class="text-xl font-extrabold text-mint">فروشگاه من</div>
+      <div class="text-xs text-teal3 mt-1">پنل مدیریت</div>
+    </div>
+    <nav id="nav" class="flex-1 overflow-y-auto px-3 space-y-1"></nav>
+    <div class="p-4 text-xs text-teal3">نسخه اولیه</div>
+  </aside>
+  <div id="veil" class="fixed inset-0 bg-ink/50 z-20 hidden lg:hidden"></div>
+
+  <main class="flex-1 min-w-0">
+    <header class="flex items-center gap-3 px-4 lg:px-8 py-4 bg-white border-b border-mist sticky top-0 z-10">
+      <button id="menu" class="lg:hidden p-2 rounded-lg bg-mist text-teal1" aria-label="منو">☰</button>
+      <h1 id="title" class="text-lg font-bold flex-1">داشبورد</h1>
+      <a href="#" class="rounded-full border border-mint px-4 py-1.5 text-sm text-teal1">خروج</a>
+    </header>
+    <section id="view" class="p-4 lg:p-8 space-y-6"></section>
+  </main>
+</div>
+
+<div id="modal" class="fixed inset-0 z-40 hidden items-center justify-center bg-ink/60 p-4">
+  <form id="form" class="bg-white rounded-3xl w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 space-y-4">
+    <h2 id="mt" class="text-lg font-bold">افزودن محصول جدید</h2>
+    <label class="block text-sm">نام محصول *<input required name="n" class="mt-1 w-full rounded-xl border border-mint px-3 py-2"></label>
+    <label class="block text-sm">دسته‌بندی *
+      <select name="c" class="mt-1 w-full rounded-xl border border-mint px-3 py-2 bg-white"><option>موبایل</option><option>لپ‌تاپ</option><option>لوازم خانگی</option></select></label>
+    <div class="grid grid-cols-2 gap-3">
+      <label class="block text-sm">قیمت نقدی (تومان)<input name="p" inputmode="numeric" class="mt-1 w-full rounded-xl border border-mint px-3 py-2"></label>
+      <label class="block text-sm">قیمت اعتباری (اختیاری)<input name="q" inputmode="numeric" class="mt-1 w-full rounded-xl border border-mint px-3 py-2"></label>
+      <label class="block text-sm">موجودی<input name="s" type="number" min="0" value="0" class="mt-1 w-full rounded-xl border border-mint px-3 py-2"></label>
+      <label class="block text-sm">وضعیت نمایش<select name="t" class="mt-1 w-full rounded-xl border border-mint px-3 py-2 bg-white"><option>فعال</option><option>پیش‌نویس</option></select></label>
+    </div>
+    <label class="block text-sm">تصویر محصول<input type="file" accept="image/*" class="mt-1 w-full text-sm"></label>
+    <label class="block text-sm">توضیحات<textarea rows="2" class="mt-1 w-full rounded-xl border border-mint px-3 py-2"></textarea></label>
+    <div class="flex gap-3 pt-2">
+      <button class="flex-1 rounded-full bg-teal2 hover:bg-teal1 text-white py-2.5 font-medium">ثبت محصول</button>
+      <button type="button" id="cancel" class="flex-1 rounded-full bg-mist text-teal1 py-2.5 font-medium">انصراف</button>
+    </div>
+  </form>
+</div>
+
+</template>
+<script>
+function storeApp(){
+
+const $=s=>document.querySelector(s);
+const D={
+products:{t:'محصولات',add:'افزودن محصول',cols:['نام محصول','دسته‌بندی','قیمت نقدی','قیمت اعتباری','موجودی','وضعیت'],rows:[
+['گوشی A55','موبایل','۱۸ م','۲۰ م','۱۲','فعال'],['لپ‌تاپ ایسوس','لپ‌تاپ','۴۵ م','۴۸ م','۵','فعال'],['تلویزیون','لوازم خانگی','۳۲ م','۳۴ م','۰','ناموجود']]},
+services:{t:'خدمات',cols:['نام خدمت','دسته‌بندی','قیمت','مدت انجام','وضعیت'],rows:[
+['تعمیر موبایل','تعمیرات','۵۰۰ هزار','۲ روز','فعال'],['نصب دوربین','امنیتی','۳ م','۱ روز','فعال'],['سرویس کولر','تأسیسات','۸۰۰ هزار','۳ ساعت','غیرفعال']]},
+requests:{t:'درخواست‌های خرید',cols:['کد','مشتری','محصول / خدمت','مبلغ','تاریخ','وضعیت','اعتبارسنجی'],rows:[
+['RE-101','علی رضایی','گوشی A55','۱۸ م','۲۰ آبان','جدید','اعتبار مناسب'],['RE-102','محمد کریمی','لپ‌تاپ ایسوس','۴۵ م','۲۰ آبان','در حال بررسی','نیاز به بررسی'],['RE-103','سارا احمدی','نصب دوربین','۳ م','۱۹ آبان','تأیید شده','بررسی نشده']]},
+deals:{t:'معاملات',cols:['کد معامله','مشتری','فروشنده','مبلغ کل','نوع پرداخت','تاریخ','وضعیت'],rows:[
+['TR-1024','علی رضایی','احمدی','۵۰ م','چکی','۲۰ آبان','فعال'],['TR-1025','محمد کریمی','محمدی','۳۰ م','اقساطی','۱۹ آبان','در انتظار'],['TR-1026','سارا احمدی','احمدی','۱۲ م','نقدی','۱۸ آبان','تکمیل شده']]},
+cheques:{t:'چک‌ها',add:'ثبت چک جدید',cols:['شناسه','مشتری','مبلغ','سررسید','معامله','وضعیت'],rows:[
+['CH-1001','علی رضایی','۱۵ م','۱۰ آذر','TR-1024','نزدیک سررسید'],['CH-1002','محمد کریمی','۲۰ م','۱۵ آذر','TR-1025','ثبت‌شده'],['CH-1003','سارا احمدی','۱۲ م','۲۰ آبان','TR-1026','وصول‌شده']]},
+customers:{t:'مشتریان',cols:['نام مشتری','موبایل','تعداد معاملات','مجموع معاملات','آخرین فعالیت'],rows:[
+['علی رضایی','۰۹۱۲...','۳','۵۰ م','۲۰ آبان'],['محمد کریمی','۰۹۳۵...','۲','۴۵ م','۱۹ آبان'],['سارا احمدی','۰۹۱۰...','۱','۱۲ م','۱۸ آبان']]},
+sellers:{t:'فروشندگان',add:'افزودن فروشنده',cols:['نام','تماس','تعداد معاملات','مجموع فروش','وضعیت'],rows:[
+['احمدی','۰۹۱۲...','۲۸','۸۰ م','فعال'],['محمدی','۰۹۳۵...','۱۷','۵۵ م','فعال'],['رضایی','۰۹۱۰...','۱۲','۳۵ م','غیرفعال']]}
+};
+const NAV=[['dash','داشبورد','▦'],['products','محصولات','◧'],['services','خدمات','✦'],['requests','درخواست‌های خرید','✉'],['deals','معاملات','⇄'],['cheques','چک‌ها','▤'],['customers','مشتریان','☺'],['sellers','فروشندگان','⚑'],['reports','گزارش‌ها','▲'],['settings','تنظیمات فروشگاه','⚙']];
+const tone={'فعال':'bg-teal3/25 text-teal1','تأیید شده':'bg-teal3/25 text-teal1','تکمیل شده':'bg-teal3/25 text-teal1','وصول‌شده':'bg-teal3/25 text-teal1','جدید':'bg-teal2 text-white','ثبت‌شده':'bg-mist text-teal1','در انتظار':'bg-amber-100 text-amber-800','در حال بررسی':'bg-amber-100 text-amber-800','نزدیک سررسید':'bg-amber-100 text-amber-800','ناموجود':'bg-rose-100 text-rose-700','غیرفعال':'bg-slate-200 text-slate-600','اعتبار مناسب':'bg-teal3/25 text-teal1','نیاز به بررسی':'bg-amber-100 text-amber-800','اعتبار پایین':'bg-rose-100 text-rose-700','بررسی نشده':'bg-slate-200 text-slate-600'};
+const badge=s=>tone[s]?`<span class="px-3 py-1 rounded-full text-xs font-medium ${tone[s]}">${s}</span>`:s;
+const cell=(v,i,n)=>i===n-1&&tone[v]?badge(v):(tone[v]?badge(v):v);
+
+function table(k,limit,pick){
+  const d=D[k],ix=pick||d.cols.map((_,i)=>i),rows=(limit?d.rows.slice(0,limit):d.rows).map(r=>ix.map(i=>r[i]));
+  return `<div class="bg-white rounded-3xl overflow-hidden border border-mist">
+  <div class="overflow-x-auto"><table class="tbl w-full text-sm"><thead><tr>${ix.map(i=>`<th>${d.cols[i]}</th>`).join('')}<th></th></tr></thead>
+  <tbody>${rows.map(r=>`<tr>${r.map((v,i)=>`<td>${cell(v,i,r.length)}</td>`).join('')}<td><button class="px-2 text-teal1 text-lg" aria-label="عملیات">⋮</button></td></tr>`).join('')}</tbody></table></div></div>`;
+}
+function page(k){
+  const d=D[k];
+  return `<div class="flex flex-wrap items-center gap-3">
+    <input placeholder="جست‌وجو..." class="flex-1 min-w-[160px] rounded-full border border-mint bg-white px-4 py-2 text-sm">
+    <select class="rounded-full border border-mint bg-white px-4 py-2 text-sm"><option>همه وضعیت‌ها</option></select>
+    ${d.add?`<button data-add="${k}" class="rounded-full bg-teal2 hover:bg-teal1 text-white px-5 py-2 text-sm font-medium">+ ${d.add}</button>`:''}
+  </div>${table(k)}`;
+}
+function dash(){
+  const st=[['محصولات فعال','۱۲۸'],['خدمات فعال','۲۴'],['درخواست‌های جدید','۸'],['معاملات فعال','۴۲'],['معاملات در انتظار','۸'],['چک‌های نزدیک سررسید','۱۲']];
+  const shade=['bg-ink text-mist','bg-deep text-mist','bg-teal1 text-white','bg-teal2 text-white','bg-teal3 text-ink','bg-mint text-ink'];
+  const sec=(t,k,go)=>`<div><div class="flex justify-between items-center mb-2"><h2 class="font-bold">${t}</h2><button data-go="${go}" class="text-sm text-teal2">مشاهده همه</button></div>${table(k,3)}</div>`;
+  return `<div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">${st.map((s,i)=>`
+   <div class="${shade[i]} rounded-[2rem] px-5 py-5"><div class="text-3xl font-extrabold">${s[1]}</div><div class="text-xs mt-1 opacity-90">${s[0]}</div></div>`).join('')}</div>
+  ${sec('آخرین درخواست‌های خرید','requests','requests')}${sec('آخرین معاملات','deals','deals')}${sec('چک‌های نزدیک سررسید','cheques','cheques')}`;
+}
+function reports(){
+  const r=[['گزارش فروش','مبلغ و تعداد معاملات','۱۴۲ م'],['گزارش محصولات','پرفروش‌ترین: گوشی A55','۶۴ فروش'],['گزارش خدمات','تعداد سفارش و درآمد','۱۸ سفارش'],['گزارش فروشندگان','بهترین عملکرد: احمدی','۸۰ م']];
+  return `<div class="flex gap-2 flex-wrap">${['امروز','این هفته','این ماه','بازه دلخواه'].map((t,i)=>`<button class="rounded-full px-4 py-2 text-sm ${i==2?'bg-teal2 text-white':'bg-white border border-mint text-teal1'}">${t}</button>`).join('')}</div>
+  <div class="grid sm:grid-cols-2 gap-4">${r.map(x=>`<div class="bg-white rounded-3xl border border-mist p-6"><div class="text-sm text-teal1">${x[0]}</div><div class="text-2xl font-extrabold mt-2">${x[2]}</div><div class="text-xs text-teal2 mt-1">${x[1]}</div></div>`).join('')}</div>`;
+}
+function settings(){
+  const f=['اطلاعات فروشگاه','اطلاعات تماس','آدرس','حساب بانکی','دسته‌بندی فعالیت','تنظیمات نمایش','اعلان‌ها'];
+  return `<div class="grid sm:grid-cols-2 gap-3">${f.map(t=>`<button class="text-right bg-white rounded-3xl border border-mist px-6 py-5 hover:border-teal3 flex justify-between items-center"><span class="font-medium">${t}</span><span class="text-teal2">‹</span></button>`).join('')}</div>`;
+}
+function dash2(){
+  const st=[['درخواست‌های جدید','۸','requests','bg-teal2 text-white'],['معاملات فعال','۴۲','deals','bg-deep text-mist'],['چک‌های نزدیک سررسید','۱۲','cheques','bg-teal1 text-white']];
+  const sec=(t,k,pick)=>`<div><div class="flex justify-between items-center mb-3"><h2 class="font-bold">${t}</h2><button data-go="${k}" class="text-sm text-teal2">مشاهده همه</button></div>${table(k,3,pick)}</div>`;
+  return `<div class="grid grid-cols-1 sm:grid-cols-3 gap-3">${st.map(s=>`<button data-go="${s[2]}" class="${s[3]} rounded-[2rem] px-6 py-6 text-right"><div class="text-4xl font-extrabold">${s[1]}</div><div class="text-sm mt-1 opacity-90">${s[0]}</div></button>`).join('')}</div>
+  <div><button data-add="products" class="rounded-full bg-ink hover:bg-deep text-mist px-6 py-3 text-sm font-medium">+ افزودن محصول</button></div>
+  ${sec('آخرین درخواست‌های خرید','requests',[1,2,3,5,6])}${sec('چک‌های نزدیک سررسید','cheques',[1,2,3,5])}`;
+}
+function dash3(){
+  const b=[['درخواست‌های خرید','requests','۸ درخواست جدید','✉'],['معاملات','deals','۴۲ معامله فعال','⇄'],['چک‌ها','cheques','۱۲ چک نزدیک سررسید','▤'],['تنظیمات فروشگاه','settings','اطلاعات فروشگاه و فروشندگان','⚙']];
+  const shade=['bg-teal2 text-white','bg-deep text-mist','bg-teal1 text-white','bg-teal3 text-ink'];
+  return `<p class="text-teal1">برای شروع، یکی از گزینه‌ها را انتخاب کنید.</p>
+  <button data-add="products" class="w-full flex items-center justify-between rounded-[2.5rem] bg-ink text-mist px-8 py-8 text-right"><span><span class="block text-2xl font-extrabold">+ افزودن محصول</span><span class="block text-sm text-teal3 mt-1">کالای جدید ثبت کنید</span></span><span class="text-4xl text-teal3">◧</span></button>
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">${b.map((x,i)=>`<button data-go="${x[1]}" class="${shade[i]} rounded-[2.5rem] px-8 py-7 text-right flex items-center justify-between"><span><span class="block text-xl font-bold">${x[0]}</span><span class="block text-sm opacity-90 mt-1">${x[2]}</span></span><span class="text-3xl opacity-80">${x[3]}</span></button>`).join('')}</div>`;
+}
+for(let i=NAV.length-1;i>=0;i--){if(['services','customers','sellers','reports'].includes(NAV[i][0]))NAV.splice(i,1)}
+NAV.find(x=>x[0]==='products')[1]='محصولات و خدمات';
+let ptab='products',addKind='products';
+function prodPage(){
+  const k=ptab,lbl=k==='products'?'افزودن محصول':'افزودن خدمت';
+  return `<div class="flex gap-2">${[['products','محصولات'],['services','خدمات']].map(x=>`<button data-ptab="${x[0]}" class="rounded-full px-5 py-2 text-sm font-medium ${x[0]===k?'bg-ink text-mist':'bg-white border border-mint text-teal1'}">${x[1]}</button>`).join('')}</div>
+  <div class="flex flex-wrap items-center gap-3"><input placeholder="جست‌وجو..." class="flex-1 min-w-[160px] rounded-full border border-mint bg-white px-4 py-2 text-sm"><button data-add="${k}" class="rounded-full bg-teal2 hover:bg-teal1 text-white px-5 py-2 text-sm font-medium">+ ${lbl}</button></div>${table(k)}`;
+}
+function settings2(){
+  const f=['اطلاعات فروشگاه','اطلاعات تماس و آدرس','حساب بانکی','نمایش و اعلان‌ها'];
+  return `<div class="grid sm:grid-cols-2 gap-3">${f.map(t=>`<button class="text-right bg-white rounded-3xl border border-mist px-6 py-5 hover:border-teal3 flex justify-between items-center"><span class="font-medium">${t}</span><span class="text-teal2">‹</span></button>`).join('')}</div>
+  <div class="flex items-center justify-between pt-2"><h2 class="font-bold">فروشندگان</h2><button class="rounded-full bg-teal2 hover:bg-teal1 text-white px-5 py-2 text-sm font-medium">+ افزودن فروشنده</button></div>${table('sellers')}`;
+}
+const T={dash:dash3,products:prodPage,settings:settings2};
+function go(k){
+  const n=NAV.find(x=>x[0]===k);
+  $('#title').textContent=n[1];
+  $('#view').innerHTML=T[k]?T[k]():page(k);
+  $('#nav').innerHTML=NAV.map(x=>`<button data-go="${x[0]}" class="w-full flex items-center gap-3 px-4 py-2.5 rounded-full text-sm text-right ${x[0]===k?'nav-on':'hover:bg-deep'}"><span class="w-5 text-center">${x[2]}</span>${x[1]}</button>`).join('');
+  closeSide();
+}
+function closeSide(){$('#side').classList.add('translate-x-full');$('#veil').classList.add('hidden')}
+if(window.__sc)document.removeEventListener('click',window.__sc);const __h=e=>{
+  const tb=e.target.closest('[data-ptab]');if(tb){ptab=tb.dataset.ptab;return go('products')}
+  const g=e.target.closest('[data-go]');if(g)return go(g.dataset.go);
+  const a=e.target.closest('[data-add]');if(a){addKind=a.dataset.add==='services'?'services':'products';ptab=addKind;$('#mt').textContent=addKind==='services'?'افزودن خدمت جدید':'افزودن محصول جدید';$('#modal').classList.replace('hidden','flex')}
+};document.addEventListener('click',__h);window.__sc=__h;
+$('#menu').onclick=()=>{$('#side').classList.remove('translate-x-full');$('#veil').classList.remove('hidden')};
+$('#veil').onclick=closeSide;
+$('#cancel').onclick=()=>$('#modal').classList.replace('flex','hidden');
+$('#form').onsubmit=e=>{e.preventDefault();const f=new FormData(e.target);
+  const st=f.get('t')==='فعال'?'فعال':'غیرفعال';D[addKind].rows.unshift(addKind==='services'?[f.get('n'),f.get('c'),f.get('p')||'—','—',st]:[f.get('n'),f.get('c'),f.get('p')||'—',f.get('q')||'—',f.get('s'),st]);
+  $('#modal').classList.replace('flex','hidden');e.target.reset();go('products')};
+go('dash');
+
+}
+const $=s=>document.querySelector(s);
+let role='customer',logged=false,storeOK=false,tab='home',showForm=false;
+const fa=s=>s.replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+
+const tone={'فعال':'bg-teal3/25 text-teal1','تأیید شده':'bg-teal3/25 text-teal1','تکمیل شده':'bg-teal3/25 text-teal1','جدید':'bg-teal2 text-white','ثبت‌شده':'bg-mist text-teal1','نزدیک سررسید':'bg-amber-100 text-amber-800','در حال بررسی':'bg-amber-100 text-amber-800','وصول‌شده':'bg-teal3/25 text-teal1'};
+const cell=v=>tone[v]?`<span class="px-3 py-1 rounded-full text-xs font-medium ${tone[v]}">${v}</span>`:v;
+const tbl=(cols,rows)=>`<div class="bg-white rounded-3xl overflow-hidden border border-mist"><div class="overflow-x-auto"><table class="tbl w-full text-sm"><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(v=>`<td>${cell(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`;
+
+const C={
+ reqs:{cols:['کد','محصول / خدمت','مبلغ','تاریخ','وضعیت'],rows:[['RE-101','گوشی A55','۱۸ م','۲۰ آبان','جدید'],['RE-090','نصب دوربین','۳ م','۱۰ آبان','تأیید شده']]},
+ deals:{cols:['کد معامله','مبلغ کل','نوع پرداخت','باقی‌مانده','وضعیت'],rows:[['TR-1024','۵۰ م','چکی','۳۵ م','فعال'],['TR-0990','۱۲ م','نقدی','۰','تکمیل شده']]},
+ chq:{cols:['شناسه','مبلغ','سررسید','معامله','وضعیت'],rows:[['CH-1001','۱۵ م','۱۰ آذر','TR-1024','نزدیک سررسید'],['CH-1002','۲۰ م','۱۵ دی','TR-1024','ثبت‌شده']]}
+};
+
+/* ---------- صفحه اصلی: فقط هدر و هیرو ---------- */
+function home(){
+  return `<div class="hero text-mist">
+  <header class="flex items-center justify-between gap-2 px-5 lg:px-12 py-5">
+    <a href="#" class="text-xl font-extrabold text-mint">فروشگاه من</a>
+    <nav class="flex gap-2">
+      <button data-login="store" class="rounded-full border border-mint/60 text-mint px-4 sm:px-6 py-2 text-sm hover:bg-white/10">ورود فروشگاه</button>
+      <button data-login="customer" class="rounded-full bg-teal3 text-ink px-4 sm:px-6 py-2 text-sm font-medium hover:bg-mint">ورود مشتری</button>
+    </nav>
+  </header>
+  <section class="max-w-2xl mx-auto px-5 pt-14 pb-20 text-center">
+    <h1 class="text-3xl sm:text-5xl font-extrabold leading-snug">اعتبار خرید خود را استعلام کنید</h1>
+    <p class="mt-4 text-mint/90">کد ملی و شماره موبایل را وارد کنید تا وضعیت اعتبار شما را ببینید.</p>
+    <form id="inq" class="mt-10 bg-white text-ink rounded-[2.5rem] p-6 sm:p-8 space-y-4 text-right">
+      <label class="block text-sm">کد ملی<input id="nid" inputmode="numeric" maxlength="10" class="field mt-1" placeholder="۱۰ رقم"></label>
+      <label class="block text-sm">شماره موبایل<input id="mob" inputmode="numeric" maxlength="11" class="field mt-1" placeholder="۰۹۱۲..."></label>
+      <p id="err" class="text-sm text-rose-600 hidden"></p>
+      <button class="w-full rounded-full bg-teal2 hover:bg-teal1 text-white py-3 font-bold">استعلام</button>
+      <div id="res" class="hidden rounded-3xl bg-mist p-5 text-center">
+        <div class="text-sm text-teal1">وضعیت اعتبار</div>
+        <div class="text-2xl font-extrabold mt-1">اعتبار مناسب</div>
+        <div class="text-sm text-teal2 mt-1">سقف خرید اعتباری: ۶۰ میلیون تومان</div>
+        <div class="text-xs text-slate-500 mt-3">این نتیجه نمونه است و هنوز به سرویس اعتبارسنجی وصل نشده.</div>
+      </div>
+    </form>
+  </section></div>`;
+}
+
+/* ---------- صفحه ورود مشترک ---------- */
+function login(){
+  const o=(v,t,d)=>`<label class="flex-1 cursor-pointer"><input type="radio" name="r" value="${v}" class="sr-only" ${role===v?'checked':''}>
+   <span class="flex items-center gap-3 rounded-3xl border-2 border-mint px-4 py-3"><i class="dot w-5 h-5 shrink-0 rounded-full border-2 border-teal2 grid place-items-center"><b class="w-2.5 h-2.5 rounded-full bg-teal2"></b></i>
+   <span class="text-sm"><span class="block font-bold">${t}</span><span class="text-xs text-teal1">${d}</span></span></span></label>`;
+  return `<div class="hero grid place-items-center px-5 py-10">
+  <div class="w-full max-w-md">
+   <a href="#" class="text-mint text-sm">‹ بازگشت به صفحه اصلی</a>
+   <form id="lf" class="mt-4 bg-white rounded-[2.5rem] p-6 sm:p-8 space-y-5">
+    <h1 class="text-2xl font-extrabold text-center">ورود به پنل</h1>
+    <fieldset><legend class="text-sm mb-2">ورود به‌عنوان</legend><div class="flex gap-3 flex-col sm:flex-row">${o('store','فروشگاه','مدیریت فروش')}${o('customer','مشتری','پیگیری خرید')}</div></fieldset>
+    <label class="block text-sm">شماره موبایل<input id="lm" inputmode="numeric" class="field mt-1" placeholder="۰۹۱۲..."></label>
+    <label class="block text-sm">رمز عبور<input id="lp" type="password" class="field mt-1"></label>
+    <p id="le" class="text-sm text-rose-600 hidden"></p>
+    <button class="w-full rounded-full bg-teal2 hover:bg-teal1 text-white py-3 font-bold">ورود</button>
+   </form></div></div>`;
+}
+
+/* ---------- پنل مشتری ---------- */
+const TABS=[['home','خانه'],['reqs','درخواست‌ها'],['deals','معاملات'],['chq','چک‌ها'],['credit','اعتبار من']];
+function panelBody(){
+  if(tab==='home'){
+    const s=[['چک بعدی','۱۵ م — ۱۰ آذر'],['مانده بدهی','۳۵ م'],['وضعیت اعتبار','اعتبار مناسب']];
+    const b=[['ثبت درخواست خرید','reqs','bg-ink text-mist'],['معاملات من','deals','bg-teal2 text-white'],['چک‌های من','chq','bg-teal1 text-white'],['اعتبار من','credit','bg-teal3 text-ink']];
+    return `<div class="grid sm:grid-cols-3 gap-3">${s.map(x=>`<div class="bg-white border border-mist rounded-[2rem] px-6 py-5"><div class="text-xs text-teal1">${x[0]}</div><div class="text-lg font-extrabold mt-1">${x[1]}</div></div>`).join('')}</div>
+    <div class="grid sm:grid-cols-2 gap-4">${b.map(x=>`<button data-tab="${x[1]}" ${x[1]==='reqs'?'data-new="1"':''} class="${x[2]} rounded-[2.5rem] px-8 py-7 text-right text-xl font-bold">${x[0]}</button>`).join('')}</div>`;
+  }
+  if(tab==='reqs'){
+    return `<div><button id="nr" class="rounded-full bg-teal2 hover:bg-teal1 text-white px-5 py-2 text-sm font-medium">+ ثبت درخواست جدید</button></div>
+    <form id="rf" class="${showForm?'':'hidden'} bg-white border border-mist rounded-3xl p-5 grid sm:grid-cols-3 gap-3">
+     <input id="rn" required placeholder="نام محصول یا خدمت" class="field"><input id="ra" placeholder="مبلغ تقریبی (تومان)" inputmode="numeric" class="field">
+     <button class="rounded-full bg-ink text-mist px-5 py-2.5 font-medium">ارسال درخواست</button></form>
+    ${tbl(C.reqs.cols,C.reqs.rows)}`;
+  }
+  if(tab==='credit'){
+    return `<div class="bg-white border border-mist rounded-[2.5rem] p-8 max-w-xl">
+     <div class="text-sm text-teal1">وضعیت اعتبار شما</div><div class="text-3xl font-extrabold mt-1">اعتبار مناسب</div>
+     <div class="mt-6 h-4 rounded-full bg-mist overflow-hidden"><div class="h-full rounded-full bg-teal2" style="width:58%"></div></div>
+     <div class="flex justify-between text-sm mt-2"><span>استفاده‌شده: ۳۵ م</span><span>سقف: ۶۰ م</span></div>
+     <div class="text-sm text-teal2 mt-4">اعتبار قابل استفاده: ۲۵ میلیون تومان (نمونه)</div></div>`;
+  }
+  return tbl(C[tab].cols,C[tab].rows);
+}
+function panel(){
+  return `<div class="min-h-screen"><header class="bg-ink text-mist px-5 lg:px-10 py-4 flex items-center justify-between">
+   <span class="text-lg font-extrabold text-mint">فروشگاه من</span>
+   <div class="flex items-center gap-3 text-sm"><span class="hidden sm:inline">علی رضایی</span><button id="out" class="rounded-full border border-mint/60 text-mint px-4 py-1.5">خروج</button></div></header>
+   <div class="bg-white border-b border-mist px-3 lg:px-10 overflow-x-auto"><nav class="flex gap-1 py-2">${TABS.map(t=>`<button data-tab="${t[0]}" class="rounded-full px-4 py-2 text-sm whitespace-nowrap ${t[0]===tab?'bg-teal2 text-white':'text-teal1 hover:bg-mist'}">${t[1]}</button>`).join('')}</nav></div>
+   <main class="p-4 lg:p-10 space-y-5 max-w-5xl mx-auto"><h1 class="text-xl font-bold">${TABS.find(t=>t[0]===tab)[1]==='خانه'?'سلام، علی رضایی':TABS.find(t=>t[0]===tab)[1]}</h1>${panelBody()}</main></div>`;
+}
+
+/* ---------- مسیریابی ---------- */
+function render(){
+  const h=location.hash.slice(1);
+  const v=h==='store'&&storeOK?'store':h==='panel'&&logged?'panel':(h==='login'||h==='panel'||h==='store')?'login':'home';
+  $('#app').innerHTML={home,login,panel,store:()=>$('#storeTpl').innerHTML}[v]();
+  if(v==='store'){storeApp();return}
+  window.scrollTo(0,0);
+  if(v==='home')$('#inq').onsubmit=e=>{e.preventDefault();
+    const n=fa($('#nid').value.trim()),m=fa($('#mob').value.trim()),er=$('#err');
+    const bad=!/^\d{10}$/.test(n)?'کد ملی باید ۱۰ رقم باشد.':!/^09\d{9}$/.test(m)?'شماره موبایل باید با ۰۹ شروع شود و ۱۱ رقم باشد.':'';
+    er.textContent=bad;er.classList.toggle('hidden',!bad);$('#res').classList.toggle('hidden',!!bad)};
+  if(v==='login')$('#lf').onsubmit=e=>{e.preventDefault();
+    role=document.querySelector('input[name=r]:checked').value;
+    const m=fa($('#lm').value.trim()),er=$('#le');
+    if(!/^09\d{9}$/.test(m)||!$('#lp').value){er.textContent='شماره موبایل و رمز عبور را درست وارد کنید.';er.classList.remove('hidden');return}
+    if(role==='store'){storeOK=true;location.hash='store';return}
+    logged=true;tab='home';location.hash='panel'};
+  if(v==='panel'){
+    if($('#out'))$('#out').onclick=()=>{logged=false;location.hash=''};
+    if($('#nr'))$('#nr').onclick=()=>{showForm=!showForm;render()};
+    if($('#rf'))$('#rf').onsubmit=e=>{e.preventDefault();
+      C.reqs.rows.unshift(['RE-'+(102+C.reqs.rows.length),$('#rn').value,$('#ra').value||'—','امروز','جدید']);showForm=false;render()};
+  }
+}
+document.addEventListener('click',e=>{
+  const l=e.target.closest('[data-login]');if(l){role=l.dataset.login;location.hash='login';if(location.hash==='#login')render();return}
+  const t=e.target.closest('[data-tab]');if(t){tab=t.dataset.tab;showForm=!!t.dataset.new;render()}
+});
+window.addEventListener('hashchange',render);
+render();
+</script>
+</body>
+</html>
